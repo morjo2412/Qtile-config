@@ -11,3 +11,5 @@ need to install:
 - picom
 
 - nm-applet
+
+- flameshot
