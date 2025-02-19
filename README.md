@@ -6,8 +6,6 @@ need to install:
 
 - feh
 
-- xgifwallpaper
-
 - picom
 
 - nm-applet
