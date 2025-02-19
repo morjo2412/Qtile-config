@@ -33,8 +33,10 @@ import subprocess
 from libqtile import bar, extension, hook, layout, qtile, widget
 from libqtile.config import Click, Drag, Group, Key, KeyChord, Match, Screen
 from libqtile.lazy import lazy
+from libqtile.widget import backlight
 # Make sure 'qtile-extras' is installed or this config will not work.
 from qtile_extras import widget
+from qtile_extras.widget import AnimatedImage
 from qtile_extras.widget.decorations import RectDecoration
 from qtile_extras.widget.decorations import BorderDecoration
 from qtile_extras.widget.decorations import PowerLineDecoration
@@ -59,30 +61,37 @@ Rosa_1 = "eb2387"
 
 # Paleta de colores Omni
 colors = {
-    "background": "#191724",  # Fondo oscuro
-    "foreground": "#e0def4",  # Texto claro
-    "black": "#1a1a1a",       # Negro
-    "red": "#eb6f92",         # Rojo
-    "green": "#31748f",       # Verde
-    "yellow": "#8f7431",      # Amarillo
-    "blue": "#9ccfd8",        # Azul
-    "orange": "#f6a87a",      # Naranja cálido
-    "dark-orange": "#d16a3c",  # Naranja quemado
-    "green-moss": "#4f7942",     # Verde musgo oscuro
-    "green-forest": "#1f4d3d",
-    "green-lime": "#7ebd26",      # Verde lima
-    "green-mint": "#74d18f",      #verde menta
-    "turquesa": "#2ba7a7",    #turquesa
-    "dark-blue": "#314d8f",   # Dark Blue
-    "magenta": "#8f3174",     # Magenta
-    "magenta2": "#FF00FF",
-    "cyan": "#56bcc0",        # Cian
-    "gray": "#2e2e2e",        # Gray
-    "white": "#e0def4",       # Blanco
     "active": "#C71585",      # Color activo
     "inactive": "#2e2e2e",    # Color inactivo 
     "border_focus": "#9ccfd8",  # Borde enfocado
     "border_normal": "#191724",  # Borde normal
+
+    
+    "background": "#0E0B16",      # Fondo oscuro (como el cielo nocturno del juego)
+    "foreground": "#E0DFE3",       # Texto claro
+    
+    "pink": "#FF2C7C",            # Rosa neón (como los elementos de interfaz del juego)
+    "off_pink": "#852046",
+    
+    "cyan": "#00F3FF",            # Cian brillante (para resaltar)
+    "blue": "#6FD8E8",        # Azul eléctrico
+    "off_cyan": "#5E9CA0",
+    "gray_blue": "#4A6D79",
+    
+    "purple": "#5533c7",          # Morado eléctrico (accesos y detalles)
+    "neon_purple": "#C792EA",
+    
+    "accent_green": "#2CFFAF",    # Verde neón (para métricas)
+    "green": "#31748f",       # Verde
+    
+    "alert": "#FF6B6B",           # Rojo/rosa para alertas (batería baja)
+    "red_blood" : "#d94f5f",
+    "yellow": "#8f7431",      # Amarillo
+    
+    "dark_gray": "#1A1823",       # Gris oscuro (para fondos de widgets)
+    "black": "#1a1a1a",       # Negro
+    
+    "warm_orange": "#F6A878",
 }
 
 
@@ -135,9 +144,13 @@ keys = [
     Key([mod], "t", lazy.window.toggle_floating(), desc="Toggle floating on the focused window"),
     Key([mod, "control"], "r", lazy.reload_config(), desc="Reload the config"),
     Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown Qtile"),
+    Key([mod, "mod1"], "s", lazy.spawn("systemctl poweroff"), desc="Shutdown System"),
+    Key([mod, "mod1"], "r", lazy.spawn("systemctl reboot"), desc="Reboot System"),
+
 
     # Lanzar aplicaciones
     Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
+    Key([mod], "n", lazy.spawn("firefox"), desc="Open firefox"),
 
     # Lanzar rofi
     Key(["mod1"], "d", lazy.spawn(rofi), desc="Lanzar Rofi"),
@@ -175,11 +188,12 @@ for vt in range(1, 8):
 #groups = [Group(i) for i in "1234567890"]
 
 __groups = {
-    1: Group(">_ Terminal"),
-    2: Group("Browser"),
-    3: Group("Develop"),
-    4: Group("Files"),
-    0: Group("Other")
+    1: Group("1"),
+    2: Group("2"),
+    3: Group("3"),
+    4: Group("4"),
+    5: Group("5"),
+    6: Group("6")
 }
 groups = [__groups[i] for i in __groups]
 
@@ -203,29 +217,52 @@ for i in groups:
         # Key([mod, "shift"], i.name, lazy.window.togroup(i.name),
         #     desc="move focused window to group {}".format(i.name)),
     ])
+    
+layout_theme = {
+    "border_width": 2,                   # Grosor del borde
+    "border_focus": colors["pink"],    # Borde de la ventana enfocada
+    "border_normal": colors["cyan"],     # Borde de ventanas inactivas
+    "margin": 3,                         # Espacio exterior alrededor de las ventanas
+    "single_border_width": 3,           # Grosor del borde si hay una sola ventana
+    "single_margin": 5,                 # Margen si hay una sola ventana
+    "ratio": 0.4,                        # Proporción inicial del área principal
+}
 
 layouts = [
 
-     layout.MonadTall(
-	border_width= 2, 
-	border_focus = Rosa_1 ,
-	margin = 4,            
-     ),
+    layout.MonadTall(
+        **layout_theme,
+        # Opciones adicionales para mejor usabilidad:
+        change_ratio=0.05,    # Incremento al redimensionar (más preciso)
+        min_ratio=0.3,        # Tamaño mínimo del área principal
+        max_ratio=0.7,        # Tamaño máximo del área principal
+    ),
+    
+    layout.Spiral(
+        **layout_theme,
+        direction="right",    # Dirección de la espiral (right/left/up/down)
+        split_ratio=0.5,      # Cómo se divide el espacio al añadir ventanas
+        # Mejoras de usabilidad:
+        new_client_position="bottom",  # Nueva ventana arriba/abajo (top/bottom)
+        change_ratio=0.025,   # Incremento más preciso al redimensionar
+        max_ratio=0.75,       # Límite máximo de expansión
+        min_ratio=0.25,       # Límite mínimo de contracción
+    ),
 
-     layout.Max(border_focus = Rosa_1, border_normal = Rosa_1, border_width = 4, margin = 4),
+     layout.Max(border_focus = colors["pink"], border_normal = colors["pink"], border_width = 3, margin = 2),
      
-     layout.Columns(border_focus_stack=["#d75f5f", "#8f3d3d"], border_width=4),
-
-    # Try more layouts by unleashing below layouts.
-    # layout.Stack(num_stacks=2),
-    # layout.Bsp(),
-    # layout.Matrix(border_width= 4,
-    # layout.MonadWide(),
-    # layout.RatioTile(),
-    # layout.Tile(),
-    # layout.TreeTab(),
-    # layout.VerticalTile(),
-    # layout.Zoomy(),
+    layout.Columns(
+        **layout_theme,
+        num_columns=2,              # Número inicial de columnas
+        split=True,                  # Permite dividir ventanas en subcolumnas
+        wrap_focus_columns=True,     # Navegación circular entre columnas
+        wrap_focus_rows=True,        # Navegación circular entre filas
+        insert_position=1,           # Nueva ventanas a la derecha (0=izquierda)
+        fair=False,                  # Las nuevas ventanas ocupan espacio equitativo
+        # Mejoras de usabilidad:
+        change_ratio=0.025,          # Precisión al redimensionar
+        grow_amount=10,              # Píxeles a crecer/encoger con atajos
+    ),
 ]
 
 
@@ -237,145 +274,296 @@ layouts = [
 # Configuración de los widgets
 widget_defaults = dict(
     font="Fira Sans Book",
-    fontsize=18,
+    fontsize=18
+,
     padding=5,
     foreground=colors["foreground"],  # Color de texto
     background=colors["background"],  # Fondo
 )
 extension_defaults = widget_defaults.copy()
 
-# Pantallas y barras
+# Pantallas y Barras
 screens = [
     Screen(
         top=bar.Bar(
             [
                 widget.GroupBox(
-                    highlight_color=[colors["magenta"], colors["cyan"]],
-                    highlight_method="border",
-                    spacing=5,
-                    inactive=colors["dark-orange"],
-                    active=colors["green"],
-                    block_highlight_text_color=colors["foreground"],
-                    borderwidth=3,
-                    padding=5,
-                    this_current_screen_border=colors["magenta"],
-                    this_screen_border=colors["inactive"],
-                    other_screen_border=colors["border_normal"],
-                    other_current_screen_border=colors["inactive"],
+                    font="Fira Code Bold",
+                    fontsize=16,
+                    margin_y=4,
+                    margin_x=8,
+                    padding_y=6,
+                    padding_x=8,
+                    active=colors["pink"],
+                    inactive=colors["off_pink"],
+                    rounded=False,
+                    highlight_color=[colors["cyan"], colors["purple"]],
+                    highlight_method="block",
+                    this_current_screen_border=colors["pink"],
+                    block_highlight_text_color=colors["background"],
+                    decorations=[
+                        RectDecoration(
+                            colour=colors["dark_gray"],
+                            radius=6,
+                            filled=True,
+                            padding_y=2,
+                        )
+                    ],
                 ),
+
+		        # Prompt 
                 widget.Prompt(
                     foreground=colors["yellow"],
                     background=colors["background"],
                 ),
-                widget.WindowName(
-                    foreground=colors["cyan"],
-                    background=colors["background"],
-                    format='{name}',
-                    padding=10,
-                ),
-                widget.Spacer(length=bar.STRETCH),
-                widget.CurrentLayout(
-                    foreground=colors["foreground"],
-                    background=colors["background"],
-                    padding=5,
+                 
+                # Decoracion
+                widget.Spacer(
+                    length=1,
+                    background=colors["dark_gray"],
                     decorations=[
-                          RectDecoration(
-                            colour=colors["green"],
-                            radius=10,
-                            filled=True,
-                            padding_y=5
-                        )
+                        PowerLineDecoration(
+                            path="forward_slash",
+                            size=45,
+                            override_colour=colors["dark_gray"],
+                        ),
                     ],
                 ),
+                # Nombre de la ventana actual (estilo minimalista)
+                widget.WindowName(
+                    background=colors["purple"],
+                    foreground=colors["cyan"],
+                    font="Iosevka",
+                    padding=10,
+                    max_chars=0,
+                    scroll = True,
+                    width = 350,
+                    empty_group_string = " Void.................. ",
+                    decorations=[
+                        PowerLineDecoration(
+                            path="forward_slash",
+                            size=45,
+                            override_colour=colors["purple"]
+                
+                        ),
+                        
+                    ],
+                ),
+                
+                # Decoraciones
+                widget.Spacer(
+                    length=25,
+                    background=colors["accent_green"],  # Fondo del Spacer
+                    decorations=[
+                        PowerLineDecoration(
+                            path="forward_slash",
+                            size=45,
+                            override_colour=colors["accent_green"],  # Color de la flecha
+                        ),
+                    ],
+                ),
+                widget.Spacer(
+                    length=25,
+                    background=colors["pink"],
+                    decorations=[
+                        PowerLineDecoration(
+                            path="forward_slash",
+                            size=45,
+                            override_colour=colors["pink"],
+                        ),
+                    ],
+                ),
+                widget.Spacer(
+                    length=25,
+                    background=colors["cyan"],
+                    decorations=[
+                        PowerLineDecoration(
+                            path="forward_slash",
+                            size=45,
+                            override_colour=colors["cyan"],
+                        ),
+                    ],
+                ),
+                
+                widget.Spacer(length= bar.STRETCH),
+                
+                # Current Layout
                 widget.CurrentLayoutIcon(
-                    foreground=colors["foreground"],
+                    foreground=colors["cyan"],
                     background=colors["background"],
                     scale=0.5,
                     padding=5,
+                ),
+                
+                # Widgets del sistema (estilo "circuitos" neón)
+                widget.CPU(
+                    foreground=colors["accent_green"],
+                    format="  {load_percent}%",
+                    padding=8,
                     decorations=[
-                        RectDecoration(
-                            colour=colors["green"],
-                            radius=10,
-                            filled=True,
-                            padding_y=5
-                        )
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["accent_green"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
                     ],
                 ),
+                widget.Memory(
+                    foreground=colors["pink"],
+                    format="  {MemUsed: .0f}{mm}",
+                    padding=8,
+                    decorations=[
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["pink"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
+                    ],
+
+                ),
+
+                # Reloj (estilo "digital retro")
                 widget.Clock(
-                    format='⏱ %d-%m-%Y %a %I:%M %p',
-                    foreground=colors["foreground"],
-                    background=colors["background"],
+                    foreground=colors["cyan"],
+                    format="  %d/%m  󰥔  %I:%M %p",
                     padding=10,
                     decorations=[
-                        RectDecoration(
-                            colour=colors["green"],
-                            radius=10,
-                            filled=True,
-                            padding_y=5
-                        )
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["cyan"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
                     ],
                 ),
+
+                # Batería (estilo de barra de energía del juego)
                 widget.Battery(
-                    foreground=colors["foreground"],
-                    background=colors["background"],
-                    format='{char} {percent:2.0%}',
-                    padding=10,
-                    low_foreground=colors["green-moss"],
-                    low_percentage=0.2,
+                    foreground=colors["accent_green"],
+                    format="{char} {percent:2.0%}",
+                    low_foreground=colors["alert"],
+                    low_percentage=0.15,
+                    padding=8,
                     decorations=[
-                        RectDecoration(
-                            colour=colors["magenta"],
-                            radius=10,
-                            filled=True,
-                            padding_y=5
-                        )
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["accent_green"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
                     ],
                 ),
+
+                # Volumen (icono de altavoz estilo pixel-art)
                 widget.Volume(
-                    foreground=colors["foreground"],
-                    background=colors["background"],
-                    fmt = '🕫  Vol: {}',
-                    padding=10,
+                    foreground=colors["pink"],
+                    fmt="󰕾 {}",
+                    padding=8,
                     decorations=[
-                        RectDecoration(
-                            colour=colors["dark-orange"],
-                            radius=8,
-                            filled=True,
-                            padding_y=5
-                        )
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["pink"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
                     ],
                 ),
-                widget.QuickExit(
-                    default_text="Salir",
-                    foreground=colors["foreground"],
-                    background=colors["background"],
-                    countdown_format="[ {} ]",
-                    padding=10,
-                    decorations=[
-                        RectDecoration(
-                            colour=colors["green"],
-                            radius=8,
-                            filled=True,
-                            padding_y=5
-                        )
-                    ],
-                ),
+
+                # Systray (integrado discretamente)
                 widget.Systray(
-		    background=colors["background"],
-		    padding=0,
-		    decorations=[
-			RectDecoration(
-			    colour=colors["magenta"],
-			    radius=8,
-			    filled=True,
-			    padding_y=5
-			)
-		    ],
-		),
+                    background=colors["dark_gray"],
+                    padding=8,
+                    icon_size=20,
+                    decorations=[
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["cyan"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
+                    ],
+                ),
+
+                # Cerrar Sesion
+                widget.QuickExit(
+                    default_text="󰍃 ",
+                    foreground=colors["neon_purple"],
+                    background=colors["background"],
+                    countdown_format="[{}]",
+                    countdown_start=3,
+                    padding=10,
+                    decorations=[
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["purple"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
+                    ],
+                ),
+                
+                # Fondo de Pantalla
+                widget.Wallpaper(
+                directory = "~/Pictures/Wallpapers/Neon",
+                random_selection = "TRUE",
+                wallpaper_command = ['feh', '--bg-fill'],
+                foreground=colors["green"],
+                label="󰉏",
+                timeout=5,
+                ),
             ],
             40,  # Altura de la barra
-            background=colors["background"],  # Fondo de la barra
-            opacity=0.9,
+            background = colors["background"],  # Fondo de la barra
+            opacity=1,
+        ),
+    ),
+    
+    Screen(
+        top=bar.Bar(
+            [
+                widget.GroupBox(
+                    font="Fira Code Bold",
+                    fontsize=16,
+                    margin_y=4,
+                    margin_x=8,
+                    padding_y=6,
+                    padding_x=8,
+                    active=colors["pink"],
+                    inactive=colors["off_pink"],
+                    rounded=False,
+                    highlight_color=[colors["cyan"], colors["purple"]],
+                    highlight_method="block",
+                    this_current_screen_border=colors["pink"],
+                    block_highlight_text_color=colors["background"],
+                    decorations=[
+                        RectDecoration(
+                            colour=colors["dark_gray"],
+                            radius=6,
+                            filled=True,
+                            padding_y=2,
+                        )
+                    ],
+                ),
+                widget.Prompt(),
+                widget.WindowName(),
+                # Reloj (estilo "digital retro")
+                widget.Clock(
+                    foreground=colors["cyan"],
+                    format="  %d/%m  󰥔  %I:%M %p",
+                    padding=10,
+                    decorations=[
+                        BorderDecoration(
+                            border_width=[0, 0, 4, 0],  # Solo abajo
+                            colour = colors["cyan"],
+                            padding_y = 2,
+                            padding_x = 4,
+                        ),
+                    ],
+                ),
+            ],
+            40,
         ),
     ),
 ]
@@ -438,3 +626,6 @@ wmname = "LG3D"
 def autostart():
     home = os.path.expanduser('~/.config/qtile/autostart.sh')
     subprocess.Popen([home])
+
+11
+
